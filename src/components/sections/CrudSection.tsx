@@ -10,7 +10,9 @@ import {
   Code,
   Play,
   CheckCircle,
-  AlertCircle
+  AlertCircle,
+  Link,
+  BookOpen
 } from "lucide-react";
 
 export const CrudSection = () => {
@@ -377,70 +379,369 @@ curl "http://localhost:8000/productos/stats/resumen"`}
         </div>
       </ContentCard>
 
-      {/* Resumen */}
-      <ContentCard title="Resumen de Mejoras" icon={AlertCircle} variant="primary">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+      {/* Práctica 13: Relaciones */}
+      <ContentCard title="Práctica 13: Relaciones Básicas entre Tablas" icon={Link} variant="primary">
+        <div className="mb-4 flex items-center space-x-2">
+          <Timer className="w-4 h-4 text-primary" />
+          <span className="text-sm text-muted-foreground">40 minutos</span>
+        </div>
+        
+        <p className="mb-6">Aprende a crear relaciones One-to-Many entre categorías y productos.</p>
+        
+        <div className="space-y-6">
           <div>
-            <h4 className="font-semibold mb-4 text-primary">Lo que Añadiste</h4>
-            <ul className="space-y-2">
-              <li className="flex items-start space-x-2">
-                <CheckCircle className="w-4 h-4 text-success mt-0.5" />
-                <span className="text-sm">Validaciones Pydantic - Datos siempre correctos</span>
-              </li>
-              <li className="flex items-start space-x-2">
-                <CheckCircle className="w-4 h-4 text-success mt-0.5" />
-                <span className="text-sm">Funciones CRUD separadas - Código más organizado</span>
-              </li>
-              <li className="flex items-start space-x-2">
-                <CheckCircle className="w-4 h-4 text-success mt-0.5" />
-                <span className="text-sm">Paginación - Manejo de listas grandes</span>
-              </li>
-              <li className="flex items-start space-x-2">
-                <CheckCircle className="w-4 h-4 text-success mt-0.5" />
-                <span className="text-sm">Búsqueda - Filtrar productos por texto</span>
-              </li>
-              <li className="flex items-start space-x-2">
-                <CheckCircle className="w-4 h-4 text-success mt-0.5" />
-                <span className="text-sm">Actualización parcial - PATCH en lugar de PUT</span>
-              </li>
-              <li className="flex items-start space-x-2">
-                <CheckCircle className="w-4 h-4 text-success mt-0.5" />
-                <span className="text-sm">Estadísticas básicas - Insights de los datos</span>
-              </li>
-            </ul>
+            <h4 className="font-semibold mb-3">Paso 1: Crear Modelo de Categoría</h4>
+            <CodeBlock 
+              title="models.py - Con relaciones"
+              code={`from sqlalchemy import Column, Integer, String, Float, ForeignKey
+from sqlalchemy.orm import relationship
+from database import Base
+
+# Modelo existente de Producto (actualizar)
+class Producto(Base):
+    __tablename__ = "productos"
+
+    id = Column(Integer, primary_key=True, index=True)
+    nombre = Column(String, index=True)
+    precio = Column(Float)
+    descripcion = Column(String)
+
+    # NUEVO: Relación con categoría
+    categoria_id = Column(Integer, ForeignKey("categorias.id"))
+    categoria = relationship("Categoria", back_populates="productos")
+
+# NUEVO: Modelo de Categoría
+class Categoria(Base):
+    __tablename__ = "categorias"
+
+    id = Column(Integer, primary_key=True, index=True)
+    nombre = Column(String, unique=True, index=True)
+    descripcion = Column(String)
+
+    # Relación: una categoría tiene muchos productos
+    productos = relationship("Producto", back_populates="categoria")`}
+            />
           </div>
 
           <div>
-            <h4 className="font-semibold mb-4 text-accent">Conceptos Aprendidos</h4>
-            <ul className="space-y-2">
-              <li className="flex items-start space-x-2">
-                <AlertCircle className="w-4 h-4 text-info mt-0.5" />
-                <span className="text-sm">Validadores Pydantic - @validator para validaciones custom</span>
-              </li>
-              <li className="flex items-start space-x-2">
-                <AlertCircle className="w-4 h-4 text-info mt-0.5" />
-                <span className="text-sm">Separación de responsabilidades - CRUD en archivo separado</span>
-              </li>
-              <li className="flex items-start space-x-2">
-                <AlertCircle className="w-4 h-4 text-info mt-0.5" />
-                <span className="text-sm">Query Parameters - Parámetros de consulta en FastAPI</span>
-              </li>
-              <li className="flex items-start space-x-2">
-                <AlertCircle className="w-4 h-4 text-info mt-0.5" />
-                <span className="text-sm">Operaciones SQL - contains(), count(), paginación</span>
-              </li>
-              <li className="flex items-start space-x-2">
-                <AlertCircle className="w-4 h-4 text-info mt-0.5" />
-                <span className="text-sm">Manejo de errores - try/except y HTTPException</span>
-              </li>
-            </ul>
+            <h4 className="font-semibold mb-3">Paso 2: Schemas con Relaciones</h4>
+            <CodeBlock 
+              title="schemas.py - Con relaciones"
+              code={`from pydantic import BaseModel
+from typing import List, Optional
+
+# Schemas para Categoría
+class CategoriaBase(BaseModel):
+    nombre: str
+    descripcion: str
+
+class CategoriaCreate(CategoriaBase):
+    pass
+
+class Categoria(CategoriaBase):
+    id: int
+    class Config:
+        from_attributes = True
+
+# Schemas actualizados para Producto
+class ProductoBase(BaseModel):
+    nombre: str
+    precio: float
+    descripcion: str
+    categoria_id: Optional[int] = None
+
+# Producto con información de categoría incluida
+class ProductoConCategoria(ProductoBase):
+    id: int
+    categoria: Optional[Categoria] = None
+    class Config:
+        from_attributes = True
+
+# Categoría con lista de productos
+class CategoriaConProductos(Categoria):
+    productos: List[ProductoBase] = []
+    class Config:
+        from_attributes = True`}
+            />
+          </div>
+
+          <div>
+            <h4 className="font-semibold mb-3">Paso 3: CRUD con Relaciones</h4>
+            <CodeBlock 
+              title="crud.py - Funciones con relaciones"
+              code={`from sqlalchemy.orm import Session, joinedload
+import models, schemas
+
+# Funciones CRUD para Categorías
+def crear_categoria(db: Session, categoria: schemas.CategoriaCreate):
+    """Crear una nueva categoría"""
+    db_categoria = models.Categoria(**categoria.dict())
+    db.add(db_categoria)
+    db.commit()
+    db.refresh(db_categoria)
+    return db_categoria
+
+def obtener_categoria_con_productos(db: Session, categoria_id: int):
+    """Obtener categoría con sus productos"""
+    return db.query(models.Categoria).options(
+        joinedload(models.Categoria.productos)
+    ).filter(models.Categoria.id == categoria_id).first()
+
+# Funciones actualizadas para Productos
+def obtener_productos_con_categoria(db: Session, skip: int = 0, limit: int = 10):
+    """Obtener productos con información de categoría"""
+    return db.query(models.Producto).options(
+        joinedload(models.Producto.categoria)
+    ).offset(skip).limit(limit).all()
+
+def obtener_productos_por_categoria(db: Session, categoria_id: int):
+    """Obtener productos de una categoría específica"""
+    return db.query(models.Producto).filter(
+        models.Producto.categoria_id == categoria_id
+    ).all()`}
+            />
+          </div>
+
+          <div>
+            <h4 className="font-semibold mb-3">Probar las Relaciones</h4>
+            <CodeBlock 
+              language="bash"
+              code={`# Crear categoría
+curl -X POST "http://localhost:8000/categorias/" \\
+     -H "Content-Type: application/json" \\
+     -d '{"nombre": "Electrónicos", "descripcion": "Dispositivos electrónicos"}'
+
+# Crear producto con categoría
+curl -X POST "http://localhost:8000/productos/" \\
+     -H "Content-Type: application/json" \\
+     -d '{"nombre": "Laptop", "precio": 999.99, "descripcion": "Laptop gaming", "categoria_id": 1}'
+
+# Ver productos con categoría
+curl "http://localhost:8000/productos/"
+
+# Ver categoría con productos
+curl "http://localhost:8000/categorias/1"`}
+            />
           </div>
         </div>
+      </ContentCard>
 
-        <div className="mt-6 p-4 bg-success/10 border border-success/20 rounded-lg">
-          <p className="text-success font-medium">
-            🎉 ¡Tu API ahora es mucho más robusta! En la siguiente práctica aprenderemos sobre relaciones entre tablas.
-          </p>
+      {/* Práctica 14: Testing */}
+      <ContentCard title="Práctica 14: Testing Básico con Base de Datos" icon={Play}>
+        <div className="mb-4 flex items-center space-x-2">
+          <Timer className="w-4 h-4 text-accent" />
+          <span className="text-sm text-muted-foreground">35 minutos</span>
+        </div>
+        
+        <p className="mb-6">Aprende a escribir tests básicos para verificar que tu API funciona correctamente.</p>
+        
+        <div className="space-y-6">
+          <div>
+            <h4 className="font-semibold mb-3">Configurar Testing</h4>
+            <CodeBlock 
+              title="conftest.py - Configuración de tests"
+              code={`import pytest
+from fastapi.testclient import TestClient
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
+import os
+
+from main import app
+from database import get_db, Base
+
+# Base de datos de prueba (en memoria)
+SQLALCHEMY_DATABASE_URL = "sqlite:///./test.db"
+
+engine = create_engine(SQLALCHEMY_DATABASE_URL, connect_args={"check_same_thread": False})
+TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+
+def override_get_db():
+    try:
+        db = TestingSessionLocal()
+        yield db
+    finally:
+        db.close()
+
+app.dependency_overrides[get_db] = override_get_db
+
+@pytest.fixture
+def client():
+    # Crear tablas de prueba
+    Base.metadata.create_all(bind=engine)
+    yield TestClient(app)
+    # Limpiar después de cada test
+    Base.metadata.drop_all(bind=engine)
+    if os.path.exists("test.db"):
+        os.remove("test.db")`}
+            />
+          </div>
+
+          <div>
+            <h4 className="font-semibold mb-3">Tests para API</h4>
+            <CodeBlock 
+              title="test_productos.py - Tests básicos"
+              code={`import pytest
+from fastapi.testclient import TestClient
+
+def test_crear_producto(client: TestClient):
+    """Test crear un nuevo producto"""
+    response = client.post(
+        "/productos/",
+        json={
+            "nombre": "Producto Test",
+            "precio": 99.99,
+            "descripcion": "Producto de prueba"
+        }
+    )
+    assert response.status_code == 200
+    data = response.json()
+    assert data["nombre"] == "Producto Test"
+    assert data["precio"] == 99.99
+
+def test_listar_productos(client: TestClient):
+    """Test listar productos"""
+    response = client.get("/productos/")
+    assert response.status_code == 200
+
+def test_validacion_precio_negativo(client: TestClient):
+    """Test validación de precio negativo"""
+    response = client.post(
+        "/productos/",
+        json={
+            "nombre": "Producto Inválido",
+            "precio": -10.99,
+            "descripcion": "Precio negativo"
+        }
+    )
+    assert response.status_code == 400
+
+def test_producto_no_encontrado(client: TestClient):
+    """Test error cuando producto no existe"""
+    response = client.get("/productos/999")
+    assert response.status_code == 404`}
+            />
+          </div>
+
+          <div>
+            <h4 className="font-semibold mb-3">Ejecutar Tests</h4>
+            <CodeBlock 
+              language="bash"
+              code={`# Instalar dependencias de testing
+pip install pytest httpx
+
+# Ejecutar todos los tests
+pytest
+
+# Ejecutar con más detalles
+pytest -v
+
+# Ejecutar un test específico
+pytest test_productos.py::test_crear_producto`}
+            />
+          </div>
+        </div>
+      </ContentCard>
+
+      {/* Ejercicios de Práctica */}
+      <ContentCard title="Ejercicios de Práctica" icon={BookOpen} variant="accent">
+        <div className="space-y-6">
+          <div>
+            <h4 className="text-lg font-semibold mb-4">Ejercicio 1: Tienda de Libros (25 min)</h4>
+            <p className="mb-4">Crear una API simple para una tienda de libros con autores y libros relacionados.</p>
+            
+            <div className="space-y-4">
+              <div className="p-4 bg-muted/50 rounded-lg">
+                <h5 className="font-medium mb-2">Objetivos:</h5>
+                <ul className="text-sm space-y-1">
+                  <li>• Crear modelos Autor y Libro con relación One-to-Many</li>
+                  <li>• Implementar schemas con relaciones anidadas</li>
+                  <li>• Crear endpoints CRUD básicos</li>
+                  <li>• Probar relaciones entre entidades</li>
+                </ul>
+              </div>
+              
+              <CodeBlock 
+                title="models.py - Modelos de la librería"
+                code={`class Autor(Base):
+    __tablename__ = "autores"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    nombre = Column(String, index=True)
+    nacionalidad = Column(String)
+    
+    # Relación: un autor tiene muchos libros
+    libros = relationship("Libro", back_populates="autor")
+
+class Libro(Base):
+    __tablename__ = "libros"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    titulo = Column(String, index=True)
+    precio = Column(Float)
+    paginas = Column(Integer)
+    
+    # Relación con autor
+    autor_id = Column(Integer, ForeignKey("autores.id"))
+    autor = relationship("Autor", back_populates="libros")`}
+              />
+            </div>
+          </div>
+
+          <div>
+            <h4 className="text-lg font-semibold mb-4">Ejercicio 2: Validaciones y Búsquedas (20 min)</h4>
+            <p className="mb-4">Mejorar la API de libros con validaciones y funciones de búsqueda.</p>
+            
+            <CodeBlock 
+              title="Validaciones y búsquedas"
+              code={`# Validaciones en schemas
+@validator('precio')
+def validar_precio(cls, v):
+    if v <= 0:
+        raise ValueError('El precio debe ser mayor a 0')
+    return v
+
+# Funciones de búsqueda en crud.py
+def buscar_libros_por_titulo(db: Session, busqueda: str):
+    return db.query(models.Libro).filter(
+        models.Libro.titulo.contains(busqueda)
+    ).all()
+
+def buscar_libros_por_autor(db: Session, nombre_autor: str):
+    return db.query(models.Libro).join(models.Autor).filter(
+        models.Autor.nombre.contains(nombre_autor)
+    ).all()`}
+            />
+          </div>
+
+          <div className="p-4 bg-success/10 border border-success/20 rounded-lg">
+            <h5 className="font-medium text-success mb-2">🎯 Lista de Verificación</h5>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm">
+              <div className="flex items-center space-x-2">
+                <CheckCircle className="w-4 h-4 text-success" />
+                <span>Modelos relacionados creados</span>
+              </div>
+              <div className="flex items-center space-x-2">
+                <CheckCircle className="w-4 h-4 text-success" />
+                <span>Schemas con validaciones</span>
+              </div>
+              <div className="flex items-center space-x-2">
+                <CheckCircle className="w-4 h-4 text-success" />
+                <span>Endpoints CRUD funcionando</span>
+              </div>
+              <div className="flex items-center space-x-2">
+                <CheckCircle className="w-4 h-4 text-success" />
+                <span>Búsquedas implementadas</span>
+              </div>
+              <div className="flex items-center space-x-2">
+                <CheckCircle className="w-4 h-4 text-success" />
+                <span>Tests básicos pasando</span>
+              </div>
+              <div className="flex items-center space-x-2">
+                <CheckCircle className="w-4 h-4 text-success" />
+                <span>Estadísticas funcionando</span>
+              </div>
+            </div>
+          </div>
         </div>
       </ContentCard>
     </div>
